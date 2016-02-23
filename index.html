@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <title>Time Machine</title>
+    <link rel="stylesheet" href="style/main.css">
+    <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+    <script src="bubbles/bubbles.js"></script>
+    <script src="js/drag-arrange.min.js"></script>
+</head>
+<body>
+    <script>
+    bubbleChosenIndex = 0;
+    senderChosenIndex = 0;
+    senders = [];
+    function chooseSender(index)
+    {
+        $('.sender').css('borderColor', '#e9eff8');
+        senderChosenIndex = index;
+        $('#sid' + index).css('borderColor', '#a6b3c4');
+    }
+    function buildBubble(index, text, flip)
+    {
+        var item = bubbleJson[index];
+        var bub = $("<div class='bubble'></div>");
+        $(bub).attr('bid', index);
+        var bImage = item.image;
+        var bBgColor = item.bgcolor;
+        if (flip && typeof(item.imageSelf) !== 'undefined')
+            bImage = item.imageSelf;
+        if (flip && typeof(item.bgcolorSelf) !== 'undefined')
+            bBgColor = item.bgcolorSelf;
+        bub.css({
+            backgroundColor: bBgColor,
+            color: item.color,
+            fontSize: '13px',
+            borderWidth: item.border.top + "px " + item.border.right + "px " + item.border.bottom + "px " + item.border.left + "px",
+            borderImage: 'url(' + bImage + ') ' + item.border.top + ' ' + item.border.right + ' ' + item.border.bottom + ' ' + item.border.left + ' round',
+            lineHeight: '25px',
+            position: 'relative'
+        });
+        var bubText = $("<div>" + text + "</div>");
+        var rightMargin = 18;
+        if (~~item.margin.right > 0)
+            rightMargin = item.margin.right;
+        bubText.css({
+            margin: (item.margin.top - item.border.top - 6) + 'px ' + (rightMargin - item.border.right) + 'px ' + (item.margin.bottom - item.border.bottom - 6 - 1) + 'px ' + (14 - item.border.left) + 'px'
+        });
+        bub.append(bubText);
+        if (flip === true)
+        {
+            bub.css({ transform: 'scaleX(-1)' });
+            bubText.css({ transform: 'scaleX(-1)' });
+        }
+        return bub;
+    }
+    $(function() {
+        $('#togglegroup').click(function(event)
+        {
+            $('.name').removeClass('ngroup');
+            if ($('#togglegroup').text() == '切换至私聊')
+            {
+                $('#togglegroup').text('切换至群聊');
+            }
+            else
+            {
+                $('.name').addClass('ngroup');
+                $('#togglegroup').text('切换至私聊');
+            }
+        });
+
+        $('#headchoose').click(function()
+        {
+            $('#headfile').trigger('click');
+        });
+
+        $('#headfile').change(function()
+        {
+            if (this.files.length)
+            {
+                if (this.files.hasOwnProperty(0))
+                {
+                    var src = (window.URL) ? window.URL.createObjectURL(this.files[0]) : window.webkitURL.createObjectURL(this.files[0]);
+                    $('#headchoose').css('backgroundImage', 'url(' + src + ')');
+                }
+            }
+        });
+
+        $('#send').click(function(event)
+        {
+            if ($('#sendtext').html() == '')
+                return;
+            if (senderChosenIndex == 0)
+            {
+                $('.chatbox').append('<div class="chattime draggable">' + $('#sendtext').text().replace(/：/g, ':') + '</div>')
+                $('#sendtext').html('');
+                $('.draggable').arrangeable();
+                return;
+            }
+            if (senderChosenIndex == 1)
+            {
+                $('.chatbox').append('<div class="chatsystem draggable"><div>' + $('#sendtext').text() + '</div></div>')
+                $('#sendtext').html('');
+                $('.draggable').arrangeable();
+                return;
+            }
+            var sender = senders[senderChosenIndex - 2];
+            var bubble;
+            if (sender.isself)
+                bubble = buildBubble(sender.bubble, $('#sendtext').html(), true)
+            else
+                bubble = buildBubble(sender.bubble, $('#sendtext').html())
+            var chat = $('<div class="chat"></div>');
+            var profile = $('<div class="profile"></div>');
+            profile.css('backgroundImage', 'url(' + sender.image + ')');
+            var namebubble = $('<div class="namebubble"></div>');
+            if (sender.isself)
+            {
+                profile.css('float', 'right');
+                bubble.css('float', 'right');
+                namebubble.css({
+                    float: 'right',
+                    marginRight: '5px'
+                });
+            }
+            var name = $('<div class="name ngroup">' + sender.name + '</div>');
+            if (!sender.isself)
+                namebubble.append(name);
+            namebubble.append(bubble);
+            chat.append(profile);
+            chat.append(namebubble);
+            chat.addClass('draggable');
+            if (sender.isself)
+                $(chat).append('<div style="clear: both;"></div>')
+            $('.chatbox').append(chat);
+            $('.draggable').arrangeable();
+            $('#sendtext').html('');
+        });
+
+        $('#addsender').click(function(event)
+        {
+            var bg = $('#headchoose').css('backgroundImage');
+            if (bg == 'none' || bg == '')
+            {
+                alert("头像……_(:з」∠)_");
+                return;
+            }
+            bg = bg.replace('url(', '').replace(')', '');
+            var bisself = $('#isself').is(':checked');
+            var newsender = {
+                image: bg,
+                name: $('#username').val() == '' ? '&nbsp;' : $('#username').val(),
+                bubble: bubbleChosenIndex,
+                isself: bisself
+            }
+            senders.push(newsender);
+            var currentIndex = senders.length + 1;
+            var slist = $('.senderlist');
+            var ele = $('<div class="sender" id="sid' + currentIndex + '" sid="' + currentIndex + '" onclick="chooseSender(' + currentIndex + ')"></div>');
+            $(ele).css({
+                backgroundImage: 'url(' + bg + ')',
+                position: 'relative'
+            });
+            if (bisself)
+            {
+                var flag = $('<div>我</div>');
+                flag.css({
+                    width: '16px',
+                    height: '16px',
+                    lineHeight: '16px',
+                    fontSize: '12px',
+                    backgroundColor: '#4cca00',
+                    position: 'absolute',
+                    left: '0',
+                    bottom: '0',
+                    fontWeight: 'bold',
+                    color: '#fff',
+                    textAlign: 'center'
+                });
+                ele.append(flag);
+            }
+            slist.append(ele);
+        });
+
+        var bubbleList = $(".bubblelist");
+        $.each(bubbleJson, function(i, item)
+        {
+            var bub = buildBubble(i, "预览");
+            bub.attr('id', 'bid' + i);
+            bub.css({
+                cursor: 'pointer',
+                margin: '3px'
+            });
+            var bubStatus = $("<div class='status'>√</div>");
+            $(bubStatus).css({
+                display: 'none',
+                color: '#fff',
+                backgroundColor: '#4cca00',
+                width: '16px',
+                height: '16px',
+                fontWeight: 'bold',
+                position: 'absolute',
+                lineHeight: '16px',
+                textAlign: 'center',
+                left: (item.border.left * -1) + 'px',
+                bottom: (item.border.bottom * -1) + 'px'
+            });
+            bub.append(bubStatus);
+            bub.click(function(event)
+            {
+                $('.status').css('display', 'none');
+                bubbleChosenIndex = i;
+                $('#bid' + i + ' .status').css('display', 'block');
+            });
+            bubbleList.append(bub);
+        });
+        $('#bid0 .status').css('display', 'block');
+    });
+    </script>
+    <div class="wrap">
+        <h1>QQ时光机器 - 重生版</h1>
+        <div class="chatbox">
+            <!--
+            <div class="chat">
+                <div class="profile"></div>
+                <div class="namebubble">
+                    <div class="name">【无业】羊乙巴蹲完</div>
+                    <div class="bubble"><div>注意了！一伙从美国华盛顿来的网络诈骗团体，会让你安装一个叫做steam的程序。我点进去以后看到好多-60%的绿色条条，一阵晕眩以后压岁钱就都不见了！这是真事！据说这伙人的头头是个代号G的白人胖子，千万不要和他对视！请马上把这条信息转发给你关心的人！</div></div>
+                </div>
+            </div>
+            -->
+        </div>
+        <div class="controls">
+            <a id="togglegroup" href="javascript:">切换至私聊</a>
+        </div>
+        <h3>发送</h3>
+        <div>
+            <div class="senderlist"><div class="sender stime" id="sid0" sid="0" style="border-color: #a6b3c4;" onclick="chooseSender(0)"></div><div class="sender ssystem" id="sid1" sid="1" onclick="chooseSender(1)"></div></div>
+            <div class="sendtext" id="sendtext" contenteditable="true"></div>
+            <button id="send" class="send">发送</button>
+        </div>
+        <h3>添加</h3>
+        <div>
+            <div>
+                <div class="headchoose" id="headchoose"></div>
+                <div class="misc">
+                    <div class="bubblelist"></div>
+                    <input type="text" id="username" placeholder="昵称" autocomplete="off">
+                    <input type="checkbox" id="isself"><label for="isself">这是我自己</label>
+                    <input type="file" id="headfile" class="headfile">
+                    <button id="addsender">添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
